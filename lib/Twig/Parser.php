@@ -73,8 +73,12 @@ class Twig_Parser implements Twig_ParserInterface
 
         // tag handlers
         if (null === $this->handlers) {
-            $this->handlers = $this->env->getTokenParsers();
-            $this->handlers->setParser($this);
+            $this->handlers = array();
+            foreach ($this->env->getTokenParsers() as $handler) {
+                $handler->setParser($this);
+
+                $this->handlers[$handler->getTag()] = $handler;
+            }
         }
 
         // node visitors
@@ -167,8 +171,7 @@ class Twig_Parser implements Twig_ParserInterface
                         return new Twig_Node($rv, array(), $lineno);
                     }
 
-                    $subparser = $this->handlers->getTokenParser($token->getValue());
-                    if (null === $subparser) {
+                    if (!isset($this->handlers[$token->getValue()])) {
                         if (null !== $test) {
                             $error = sprintf('Unexpected tag name "%s"', $token->getValue());
                             if (is_array($test) && isset($test[0]) && $test[0] instanceof Twig_TokenParserInterface) {
@@ -188,6 +191,7 @@ class Twig_Parser implements Twig_ParserInterface
 
                     $this->stream->next();
 
+                    $subparser = $this->handlers[$token->getValue()];
                     $node = $subparser->parse($token);
                     if (null !== $node) {
                         $rv[] = $node;
